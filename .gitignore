@@ -2,3 +2,6 @@ build/*
 install/*
 *.engine
 *.slz
+.vscode/*
+*.bak
+resource/*
