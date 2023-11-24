@@ -36,7 +36,7 @@ class FrontDetectorRunner : public NetworkRunner{
         void execute_async(void* image, int batch_size) override;
         void execute(void* image, int batch_size) override;
 
-        void* return_output(){
+        void* return_output() override{
             return h_output_;
         }
 

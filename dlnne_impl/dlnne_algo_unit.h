@@ -19,7 +19,7 @@ class NetworkBuilder{
         NetworkBuilder(const std::string& model_path, int max_batch = 1, std::vector<std::string> subgraphs = {}, int device_id = 0);
         ~NetworkBuilder();
 
-        virtual std::shared_ptr<NetworkRunner> getRunner();
+        virtual std::shared_ptr<NetworkRunner> getRunner(){};
         virtual int get_input_size(){};
         void serializedEngine(const std::string& serialized_path);
     
@@ -46,20 +46,20 @@ class NetworkRunner{
         // image: 默认输入的图像已经处理好
         virtual void execute_async(void* image, int batch_size) = 0;
         virtual void execute(void* image, int batch_size) = 0;
-
+        virtual void* return_output() = 0;
         void reset_timer(){
             time_htod = 0;
             time_dtoh = 0;
             time_infer = 0;
             time_pre = 0;
-            time_post = 0
+            time_post = 0;
             batch_count = 0;
         }
 
         void print_timer(){
             std::cout << "Front Detector Time consuming print:" << std::endl;
             std::cout << "Total infer image counts: " << batch_count << ", htod: " << time_htod / 1000 << "s, infer: " << time_infer / 1000 << "s, dtoh: " << time_dtoh / 1000 << "s, ";
-            std::cout << "preprocess: " << time_pre << "s, postprocess: " << time_post "s." << std:endl;
+            std::cout << "preprocess: " << time_pre << "s, postprocess: " << time_post << "s." << std::endl;
         }
 
         // void measureTime(const std::function<void()>& operation, float& elapsedTime){
