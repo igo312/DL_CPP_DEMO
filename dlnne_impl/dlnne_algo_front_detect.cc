@@ -1,7 +1,9 @@
 #include <cuda_runtime_api.h>
 #include <memory>
+#include <cstring>
 #include "dlnne_algo_front_detect.h"
 #include "image_proc.h"
+#include <fstream>
 #define CHECK(call)                                                                         \
     do{                                                                                     \
         const cudaError_t error = (call);                                                   \
@@ -37,9 +39,13 @@ std::shared_ptr<NetworkRunner> FrontDetectorBuilder::getRunner(){
     CHECK(cudaMalloc(&(runner->d_output_post_), max_batch_ * outputDims.d[0] * outputDims.d[2] * runner->m_max_det * sizeof(float)));
 
     // 输出内存的分配host
-    CHECK(cudaMalloc(&(runner->h_output_), max_batch_ * size  * sizeof(float)));
-    cudaMemset(runner->h_output_, 0, max_batch_ * size  * sizeof(float));
+    CHECK(cudaMallocHost(&(runner->h_output_), max_batch_ * size  * sizeof(float)));
 
+    // 初始化值
+    CHECK(cudaMemset(runner->d_output_post_, 0,  max_batch_ * outputDims.d[0] * outputDims.d[2] * runner->m_max_det * sizeof(float)));
+    CHECK(cudaMemset(runner->d_input_, 0, max_batch_ * inputDims.d[0] * inputDims.d[1] * inputDims.d[2] * inputDims.d[3] * sizeof(float)));
+    std::memset(runner->h_output_, 0, max_batch_ * size  * sizeof(float));
+    
     // 输入输出大小信息的记录
     runner->inputDims_ = inputDims; 
     runner->outputDims_ = outputDims;
@@ -95,12 +101,44 @@ void FrontDetectorRunner::infer(void* image, int batch_size, int image_width, in
     CHECK(cudaStreamSynchronize(stream_));
     timer.stop();
     time_htod += timer.last_elapsed();
+    //Debug: check input image CHECK => Done
+    // uint8_t* im = reinterpret_cast<uint8_t*>(image);
+    // for(int i = 0; i < 3 * image_height * image_width; i++){
+    //     std::cout << "inded: " << i << ", real data:" << static_cast<int>(im[i]) << std::endl;
+    // }
+
+    
     // 预处理
     timer.start();
     prerpocess(batch_size, image_width, image_height);
     CHECK(cudaStreamSynchronize(stream_));
     timer.stop();
     time_pre += timer.last_elapsed();
+
+    // 预处理debug
+    //Debug: 保存预处理后的图像，看看显示正确不
+    // float* dst = nullptr;
+    // cudaMallocHost(&dst, 3 * m_input_height * m_input_width * sizeof(float));
+    // cudaMemcpy(dst, d_input_, 3 * m_input_height * m_input_width * sizeof(float), cudaMemcpyDeviceToHost);
+    // std::ofstream outFile("./preprocess_img.bin", std::ios::binary);
+    // if (!outFile.is_open()) {
+    //     std::cerr << "无法打开文件" << std::endl;
+    //     return 1;
+    // }
+    // for(int i = 0; i < 3 * m_input_height * m_input_width; i++){
+    //     // std::cout << "preprocess data:" << dst[i]*255 << std::endl;
+    //     float scaledData = dst[i] * 255.0f;
+    //     uint8_t data = static_cast<uint8_t>(std::min(255.0f, std::max(0.0f, scaledData)));
+    //     // std::cout << "real data:" << static_cast<int>(data) << std::endl;
+    //     outFile.write(reinterpret_cast<const char*>(&data), sizeof(data));
+    // }
+    // if (!outFile.good()) {
+    //     std::cerr << "写入文件时发生错误" << std::endl;
+    //     return 1;
+    // }
+    // outFile.close();
+    // cudaFree(dst);
+
     // 推理
     timer.start();
     context_->Enqueue(batch_size, bindings.data(), stream_, nullptr);
@@ -145,15 +183,17 @@ void FrontDetectorRunner::prerpocess(int batch_size, int image_width, int image_
     // 一个batch的偏移量
     const int src_offsize = 3 * image_width * image_height;
     const int dst_offsize = 3 * m_input_width * m_input_height;
-    for( int i = 0; i < batch_size; i++){
+    for( int index = 0; index < batch_size; index++){
         // 获取当前batch的起点地址
-        uint8_t* src = reinterpret_cast<uint8_t*>(d_input_beforePre_) + batch_size * src_offsize;
-        float* dst = reinterpret_cast<float*>(d_input_) + batch_size * dst_offsize;
+        uint8_t* src = reinterpret_cast<uint8_t*>(d_input_beforePre_) + index * src_offsize;
+        float* dst = reinterpret_cast<float*>(d_input_) + index * dst_offsize;
         float scale =  std::min(float(m_input_width) / image_width, float(m_input_height) / image_height);
         int img_w = scale * image_width;
         int img_h = scale * image_height;
         int pad_w = (m_input_width - img_w) / 2;
         int pad_h = (m_input_height - img_h) / 2;
+        // printf("img_w:%d, img_h:%d, pad_w:%d, pad_h:%d\n", img_w, img_h, pad_w, pad_h); // debug
+        // printf("scale:%f, mean:%f, std:%f\n",scale_, mean_[0], std_[0]); // debug 
         // 详情用法可参考dlpreprocess/include/image_proc.h, false代表保持不改变RGB顺序。
         RGBROIBilinearResizeNormPadPlane(src, dst, image_width, image_height, m_input_width, m_input_height, img_w, img_h, pad_w, pad_h,
                                             0,  0, image_width, image_height, scale_, mean_[0], mean_[1], mean_[2], std_[0], std_[1], std_[2], pad_[0], pad_[1], pad_[2],
@@ -164,7 +204,8 @@ void FrontDetectorRunner::prerpocess(int batch_size, int image_width, int image_
 void FrontDetectorRunner::postprocess(int batch_size){
     const int num_bboxes = outputDims_.d[0] * outputDims_.d[1];
     const int num_classes = outputDims_.d[2] - 5; // -5 是减去(x, y, w, h, conf)
-    std::cout << "num bboxes output " << num_bboxes << ", num classes is " << num_classes << std::endl;
+    std::cout << "num bboxes output " << num_bboxes << ", num classes is " << num_classes << std::endl; // debug 
+    std::cout << "confidence_threshold:" << m_conf_thres << ", nms_threshold:" << m_iou_thres << std::endl;
 
     non_max_suppression((float*)d_output_, batch_size, num_bboxes, num_classes,
                          m_conf_thres, m_iou_thres, (float*)d_output_post_,

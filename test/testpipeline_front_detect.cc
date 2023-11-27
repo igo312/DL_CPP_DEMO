@@ -40,6 +40,13 @@ void getCustomerOpt(int argc, char* argv[], std::string &model_path, int &maxBat
     }
 }
 
+int map_to_origin_img(float value, int pad, float scale, float min_=0, float max_=2048){
+    value = (value - pad) / scale;
+    value = std::max(value, min_);
+    value = std::min(value, max_);
+    return std::round(value);
+}
+
 int main(int argc, char* argv[]){
     std::string model_path = "";
     std::string image_path = "";
@@ -63,26 +70,36 @@ int main(int argc, char* argv[]){
     auto runner = frontdetectEngine.getRunner();
     runner->infer(image.data, 1, width, height);
     auto output = (float*)runner->return_output();
+    
     // 画图，假设已知模型的输入是640,640，这样方便计算scale
     // 用置信度判断该框是否保留率
     float scale = std::min(640.0 / (float)width, 640.0 / (float)height);
     int pad_w = (640 - width*scale)/2;
-    int pad_h = (640 - height*scale)/2;
-    while(true){
+    int pad_h = (640 - height*scale)/2; 
+    int output_num = (int)output[0];
+    output = output + 1;
+    printf("output %d boxes\n", output_num);
+    for(int i = 0; i < output_num; i++){
         float x1 = output[0];
         float y1 = output[1];
         float x2 = output[2];
         float y2 = output[3];
         float conf = output[4];
-        if(conf < 0.25) break;
-        // 预测还原到原图上
-        x1 = (x1 - pad_w) / scale;
-        x2 = (x2 - pad_w) / scale;
-        y1 = (y1 - pad_h) / scale;
-        y2 = (y2 - pad_h) / scale;
-        cv::Rect roi(x1, y1, x2 - x1, y2 - y1);
-        cv::rectangle(image, roi, cv::Scalar(0,0,255), 2);
-        output = output +  (num_classes+5);
+        float classid = output[5];
+        bool keep_flag = output[6]>0?true:false;
+        // std::cout << keep_flag << std::endl;
+        if(keep_flag){
+             // 预测还原到原图上
+            int x1_ = map_to_origin_img(x1, pad_w, scale, 0, width);
+            int x2_ = map_to_origin_img(x2, pad_w, scale, 0, width);
+            int y1_ = map_to_origin_img(y1, pad_h, scale, 0, height);
+            int y2_ = map_to_origin_img(y2, pad_h, scale, 0, height);
+            printf("x1:%d, y1:%d, x2:%d, y2:%d, conf:%.4f, classid:%.1f\n", x1_, y1_, x2_, y2_, conf, classid);
+            cv::Rect roi(x1_, y1_, x2_ - x1_, y2_ - y1_);
+            cv::rectangle(image, roi, cv::Scalar(0,0,255), 2);
+        }
+       
+        output = output +  7; // 7 is a box size, it can find non_maximum_suppresion function in the dlpreprocess include file .
     }
     cv::imwrite("./output.jpg", image);
 

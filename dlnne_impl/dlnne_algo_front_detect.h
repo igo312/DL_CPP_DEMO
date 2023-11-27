@@ -46,7 +46,7 @@ class FrontDetectorRunner : public NetworkRunner{
 
         
         float mean_[3] = {0., 0., 0.};
-        float std_[3] = {255., 255., 255.};
+        float std_[3] = {1.0, 1.0, 1.0};
         float pad_[3] = {114.0f / 255.0f, 114.0f / 255.0f, 114.0f / 255.0f};
         float scale_ = 1.0f / 255.0f;
         
