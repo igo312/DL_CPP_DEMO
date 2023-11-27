@@ -8,6 +8,8 @@ endif()
 find_package(OpenCV REQUIRED)
 
 set(DLDEMO_LIB_DIR ${CMAKE_SOURCE_DIR}/install/lib)
+set(CMAKE_INSTALL_RPATH ${CMAKE_SOURCE_DIR}/install/lib)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # 指定头文件目录
 set(SDK_DIR $ENV{DLICC_PATH}/../)

@@ -5,4 +5,3 @@ install/*
 *.slz
 .vscode/*
 *.bak
-resource/*
