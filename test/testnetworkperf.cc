@@ -33,7 +33,6 @@ void getCustomerOpt(int argc, char* argv[], std::string &model_path, int &maxBat
                 break;
             case 'g':
             {
-                std::cout << "go th g " << std::endl;
                 char* token = std::strtok(optarg, ",");
                 while( token != nullptr){
                     std::string s(token);

@@ -33,12 +33,12 @@ void getCustomerOpt(int argc, char* argv[], std::string &model_path, int &maxBat
             case 'g':
             {
                 char* token = std::strtok(optarg, ",");
-                while (token != nullptr){
+                while( token != nullptr){
                     std::string s(token);
-                    size_t start = s.find_first_not_of(" \t\r\n");
-                    size_t end = s.find_last_not_of(" \t\r\n");
-                    subgraphs.push_back(s.substr(start, end - start + 1));
-                    token = std::strtok(optarg, nullptr);
+                    s.erase(0,s.find_first_not_of(" "));
+                    s.erase(s.find_last_not_of(" ") + 1);
+                    subgraphs.push_back(s);
+                    token = std::strtok(nullptr, ",");
                 }
             }
             break;
@@ -59,7 +59,7 @@ int main(int argc, char* argv[]){
     int device_id = 0;
 
     
-    NetworkBuilder engine(model_path, 8, node_names, device_id);
+    NetworkBuilder engine(model_path, max_batch, node_names, device_id);
     engine.serializedEngine(engine_path);
-    printf("model:%s serialized to engine:%s done", model_path.c_str(), engine_path.c_str());
+    printf("maxbatch is %d, model:%s serialized to engine:%s done\n", max_batch, model_path.c_str(), engine_path.c_str());
 }

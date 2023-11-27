@@ -24,5 +24,5 @@ rm -r build
 cd ./install/bin
 
 # #pipeline test 
-./testpipeline_frontDetect -m ../../resource/ultralytics_yolov5s.onnx -b 1 -p ../../resource/1080p.jpg -c 80
+./testpipeline_frontDetect -m ../../resource/ultralytics_yolov5s.onnx -b 1 -p ../../resource/1080p.bgr -c 80 -s 1920x1080
 
