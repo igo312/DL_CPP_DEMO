@@ -1,7 +1,8 @@
 build/*
+**/build/*
 install/*
 *.engine
 *.slz
+.vscode/*
 *.bak
 resource/*
-.vscode/*

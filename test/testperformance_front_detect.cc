@@ -60,7 +60,7 @@ int main(int argc, char* argv[]){
     auto infer_func = [&frontdetectEngine, &input](int count, int batch_size){
         auto runner = frontdetectEngine.getRunner();
         for(int i = 0; i < count; i++){
-            runner->infer(input, batch_size);
+            runner->execute(input, batch_size);
         }
         runner->print_timer();
     };

@@ -140,4 +140,5 @@ NetworkRunner::~NetworkRunner(){
     if(stream_ != nullptr){
         cudaStreamDestroy(stream_);
     }
+
 }
