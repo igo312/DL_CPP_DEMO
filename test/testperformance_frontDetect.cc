@@ -6,6 +6,7 @@
 #include <string>
 #include <unistd.h>
 #include <cuda_runtime_api.h>
+#include <cstring>
 
 using namespace dl;
 
@@ -15,14 +16,15 @@ void showUsage(){
     std::cout << "     b: 模型最大batch， 默认为8" << std::endl;
     std::cout << "     c: 所有线程总的图片推理张数， 默认为6000" << std::endl;
     std::cout << "     t: 推理线程的数量，默认为1" << std::endl;
+    std::cout << "     g: 子图划分的例子" << std::endl;
     std::cout << "     h: 显示此帮助信息" << std::endl;
     std::cout << "     eg: ./test_front_detect -m ./front_detect.onnx -b 8 -t 4 -c 6000" << std::endl; 
     exit(0);
 }
 
-void getCustomerOpt(int argc, char* argv[], std::string &model_path, int &maxBatchSize, int &infer_count, int &thread_num){
+void getCustomerOpt(int argc, char* argv[], std::string &model_path, int &maxBatchSize, int &infer_count, int &thread_num, std::vector<std::string>& subgraphs){
     int opt = 0;
-    const char* opt_string = "m:b:c:t:h";
+    const char* opt_string = "m:b:c:t:g:h";
     while( -1 != (opt = getopt(argc, argv, opt_string))){
         switch(opt){
             case 'm':
@@ -37,6 +39,18 @@ void getCustomerOpt(int argc, char* argv[], std::string &model_path, int &maxBat
             case 't':
                 thread_num = atoi(optarg);
                 break;
+            case 'g':
+            {
+                char* token = std::strtok(optarg, ",");
+                while( token != nullptr){
+                    std::string s(token);
+                    s.erase(0,s.find_first_not_of(" "));
+                    s.erase(s.find_last_not_of(" ") + 1);
+                    subgraphs.push_back(s);
+                    token = std::strtok(nullptr, ",");
+                }
+            }
+                break;
             default:
                 showUsage();
                 break;
@@ -45,13 +59,16 @@ void getCustomerOpt(int argc, char* argv[], std::string &model_path, int &maxBat
 }
 
 int main(int argc, char* argv[]){
+    DlCpuTimer timer;
+    timer.start();
+
     std::string model_path = "";
     int maxBatchSize = 8;
     int infer_count = 6000;
     int thread_num = 1;
-    getCustomerOpt(argc, argv, model_path, maxBatchSize, infer_count, thread_num);
+    std::vector<std::string> node_names = {};
+    getCustomerOpt(argc, argv, model_path, maxBatchSize, infer_count, thread_num, node_names);
 
-    std::vector<std::string> node_names = {"tu1", "tu2_tiled_concate", "quantized_concat", "quantized_concat6", "quantized_concat13", "empty----"};
     auto frontdetectEngine = FrontDetectorBuilder(model_path, maxBatchSize, node_names);
     
     float* input;
@@ -68,9 +85,7 @@ int main(int argc, char* argv[]){
     std::vector<std::thread> threads;
     // int per_infer_count = infer_count / maxBatchSize / thread_num;
     int per_infer_count = infer_count / maxBatchSize;
-    DlCpuTimer timer;
-
-    timer.start();
+    
     for(int i = 0; i < thread_num; i++){
         threads.push_back(std::thread(infer_func, per_infer_count, maxBatchSize));
     }

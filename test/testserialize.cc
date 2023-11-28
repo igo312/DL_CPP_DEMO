@@ -12,6 +12,7 @@ void showUsage(){
     std::cout << "     b: 模型最大batch， 默认为8" << std::endl;
     std::cout << "     f: 输出的序列化engine文件路径" << std::endl;
     std::cout << "     g: 传入子图" << std::endl;
+    std::cout << "     h: 显示此帮助信息" << std::endl;
     std::cout << "     eg: ./testserialize -m ./front_detect.onnx -b 8 -f ./test.engine" << std::endl; 
     exit(0);
 }

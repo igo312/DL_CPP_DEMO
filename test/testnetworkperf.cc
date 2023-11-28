@@ -14,6 +14,7 @@ void showUsage(){
     std::cout << "     b: 模型最大batch， 默认为8" << std::endl;
     std::cout << "     c: 测试图片数目" << std::endl;
     std::cout << "     g: 子图划分的例子" << std::endl;
+    std::cout << "     h: 显示此帮助信息" << std::endl;
     std::cout << "     eg: ./testnetworkperf -m ./front_detect.onnx -b 8 -c 100 -g \"tu1, tu2_tiled_concate, quantized_concat, quantized_concat6, quantized_concat13, empty----\" " << std::endl; 
 }
 
