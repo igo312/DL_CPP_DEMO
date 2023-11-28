@@ -28,6 +28,7 @@ std::shared_ptr<NetworkRunner> FrontDetectorBuilder::getRunner(){
 
     // ** 实例内存的分配 **
     // 输入内存的分配
+    std::cout << "get runner max_batch: " << max_batch_ << std::endl;
     CHECK(cudaMalloc(&(runner->d_input_beforePre_), max_batch_ * 3 * 2048 * 2048 * sizeof(uint8_t)));  // d_input_beforePre_ 假设真实输入的图片大小不会大于2048*2048*3，减少反复分配内存
     CHECK(cudaMalloc(&(runner->d_input_), max_batch_ * inputDims.d[0] * inputDims.d[1] * inputDims.d[2] * inputDims.d[3] * sizeof(float)));
     
@@ -95,6 +96,7 @@ void FrontDetectorRunner::execute_async(void* image, int batch_size){
 
 void FrontDetectorRunner::infer(void* image, int batch_size, int image_width, int image_height){
     std::vector<void*> bindings = {d_input_, d_output_};
+    std::cout << "batch size " << batch_size << std::endl; // debug
     // 数据拷贝 htod
     timer.start();
     cudaMemcpyAsync(d_input_beforePre_, image, batch_size * 3 * image_width * image_height * sizeof(uint8_t), cudaMemcpyHostToDevice, stream_);
@@ -123,7 +125,8 @@ void FrontDetectorRunner::infer(void* image, int batch_size, int image_width, in
     time_post += timer.last_elapsed();
     // 数据拷贝 dtoh
     timer.start();
-    cudaMemcpyAsync(h_output_, d_output_post_, out_size_post_ * batch_size, cudaMemcpyDeviceToHost, stream_);
+    cudaMemcpyAsync(h_output_, d_output_post_, (m_max_det * 7 + 1) * batch_size, cudaMemcpyDeviceToHost, stream_);
+    // cudaMemcpyAsync(h_output_, d_output_, out_size_ * batch_size, cudaMemcpyDeviceToHost, stream_);
     CHECK(cudaStreamSynchronize(stream_));
     timer.stop();
     time_dtoh += timer.last_elapsed();
