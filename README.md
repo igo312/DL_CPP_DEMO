@@ -17,6 +17,10 @@ bash run.sh
       3. 带async的是将所有操作放在同一个流上，在函数最后进行同步。
 
 4. `test`: 提供了网络性能测试、网络的序列化、网络性能的测试、网络pipeline四个功能。
+   1. `testnetworkperf`: 纯网络性能测试
+   2. `testserialize`: 模型序列化，直接调用sdk原生的接口，可用于学习sdk api。
+   3. `testperformance_frontDetect`: 包含htod dtoh的数据传输、以及网络推理的性能测试。
+   4. `testpipeline_frontDetect`: 对单张图片完整流程的推理，包含前处理、后处理。
 
 # 2. 编译
 1. 编译 dlpreprocess
